@@ -1,5 +1,5 @@
 from sqlalchemy import Date, ForeignKey,Time , create_engine, Column, Integer, String, Float
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker,  relationship
 
 #Se crea la conexion con la db
 engine = create_engine('sqlite:///my_database.db', echo=True)
@@ -14,15 +14,19 @@ class Product(Base):
     name = Column(String, nullable=False)
     price = Column(Integer, nullable=False)
 
+    sales = relationship("Sale", back_populates="product")
+
 #Tabla de ventas
 class Sale(Base):
     __tablename__ = 'sales'
     saleId = Column(Integer, autoincrement = True, nullable = False, primary_key = True)
     date = Column(Date, nullable = False)
-    hour = Column(Time, nullable = False)
+    time = Column(Time, nullable = False)
     productId = Column(Integer, ForeignKey('products.productId'), nullable = False)
-    cantidad = Column(Integer, nullable = False)
-    precio_total = Column(Float, nullable = False)
+    quantity = Column(Integer, nullable = False)
+    total_price = Column(Float, nullable = False)
+
+    product = relationship("Product", back_populates="sales")
 
 #Se crean las tablas si no existen en el .db
 Base.metadata.create_all(engine)
