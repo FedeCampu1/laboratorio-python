@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, status
 from database import session, Product, Sale
-from schemas import ProductCreate, SaleCreate
+from schemas import ProductCreate, SaleCreate, SaleResponse
 app = FastAPI()
 
 
@@ -10,72 +10,119 @@ def hola_mundo():
 
 # ABM Product
 
-@app.get("/products")
+@app.get("/products", status_code=status.HTTP_200_OK)
 def get_products():
-    products = session.query(Product).all()
-    return [vars(product) for product in products]
-
-
-@app.get("/product/{productId}")
-def get_productId(productId: int):
-    product = session.query(Product).get(productId)
-    if product is None:
-        raise HTTPException(status_code=204, detail="Producto no encontrado")
-    return vars(product)
-
-
-@app.post("/product", status_code=status.HTTP_201_CREATED)
-def add_product(data_product: ProductCreate):
-    new_product = Product(
-        name=data_product.name,
-        price=data_product.price
-    )
-    session.add(new_product)
     try:
+        products = session.query(Product).all()
+        response = {"products": products}
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to get products: {e}")
+
+@app.get("/products/{product_id}", status_code=status.HTTP_200_OK)
+def get_product(product_id: int):
+    try:
+        product = session.query(Product).get(product_id)
+
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+        response = {"product": product}
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to get product with id {product_id}: {e}")
+
+
+@app.post("/products", status_code=status.HTTP_201_CREATED)
+def create_product(product_data: ProductCreate):
+    try:
+        product = session.query(Product).filter_by(name=product_data.name).first()
+
+        if product:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Product already exists")
+
+        product = Product(
+            name=product_data.name,
+            price=product_data.price
+        )
+
+        session.add(product)
         session.commit()
-        session.refresh(new_product)
-    except:
-        session.rollback()
-        raise HTTPException(
-            status_code=400, detail="Error al crear producto (nombre duplicado o datos invalidos)")
-    return vars(new_product)
+        session.refresh(product)
+
+        response = {"product": product}
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to create product: {e}")
 
 
-@app.put("/product/{productId}")
-def update_product(productId, data_product: ProductCreate):
-    product = session.query(Product).get(productId)
-    if product is None:
-        raise HTTPException(status_code=204, detail="Producto no encontrado")
-    product.name = data_product.name if data_product.name is not None else product.name
-    product.price = data_product.price if data_product.price is not None else product.price
+@app.put("/products/{product_id}", status_code=status.HTTP_200_OK)
+def update_product(product_id: int, product_data: ProductCreate):
+    try:
+        product = session.query(Product).get(product_id)
 
-    session.commit()
-    return vars(product)
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+        product.name = product_data.name
+        product.price = product_data.price
+
+        session.commit()
+        session.refresh(product)
+
+        response = {"product": product}
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to update product with id {product_id}: {e}")
 
 
-@app.delete("/product/{productId}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(productId):
-    product = session.query(Product).get(productId)
-    if product is None:
-        raise HTTPException(status_code=204, detail="Producto no encontrado")
-    session.delete(product)
-    session.commit()
+@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(product_id: int):
+    try:
+        product = session.query(Product).get(product_id)
+
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+        session.delete(product)
+        session.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to delete product with id {product_id}: {e}")
 
 
 # ABM Sales
 
-@app.get("/sales")
+@app.get("/sales", status_code=status.HTTP_200_OK, response_model=list[SaleResponse])
 def get_sales():
-    sales = session.query(Sale).all()
-    return [vars(sale) for sale in sales]
+    try:
+        sales = session.query(Sale).all()
+        return sales
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to get sales: {e}")
 
 
-@app.get("/sales/{saleId}")
-def get_saleId(saleId: int):
-    sale = session.query(Sale).get(saleId)
-    if sale is None:
-        raise HTTPException(status_code=204, detail="Venta no encontrada")
-    return vars(sale)
+@app.get("/sales/{sale_id}", status_code=status.HTTP_200_OK, response_model=SaleResponse)
+def get_sale(sale_id: int):
+    try:
+        sale = session.query(Sale).get(sale_id)
+
+        if not sale:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
+
+        return sale
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to get sale with id {sale_id}: {e}")
+
 
 
 @app.post("/sale", status_code=status.HTTP_201_CREATED)
@@ -105,29 +152,46 @@ def add_sale(data_sale: SaleCreate):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ocurrio un error al crear la venta: {e}")
 
 
-@app.put("/sale/{saleId}")
-def update_sale(data_sale: SaleCreate, saleId):
-    sale = session.query(Sale).get(saleId)
+@app.put("/sales/{sale_id}", status_code=status.HTTP_200_OK, response_model=SaleResponse)
+def update_sale(sale_id: int, data_sale: SaleCreate):
+    try:
+        sale = session.query(Sale).get(sale_id)
 
-    if sale is None:
-        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT, detail="Venta no encontrado")
-    sale.date = data_sale.date if data_sale.date is not None else sale.date
-    sale.time = data_sale.time if data_sale.time is not None else sale.time
-    sale.quantity = data_sale.quantity if data_sale.quantity is not None else sale.quantity
-    sale.productId = data_sale.productId if data_sale.productId is not None else sale.productId
+        if not sale:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
 
-    product = session.query(Product).get(sale.productId)
-    sale.total_price = sale.quantity * product.price
+        product = session.query(Product).get(data_sale.productId)
 
-    session.commit()
-    return vars(sale)
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+        sale.date = data_sale.date
+        sale.time = data_sale.time
+        sale.quantity = data_sale.quantity
+        sale.productId = data_sale.productId
+        sale.total_price = data_sale.quantity * product.price
+
+        session.commit()
+        session.refresh(sale)
+
+        return sale
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to update sale with id {sale_id}: {e}")
 
 
+@app.delete("/sales/{sale_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_sale(sale_id: int):
+    try:
+        sale = session.query(Sale).get(sale_id)
 
-@app.delete("/sale/{saleId}",status_code=status.HTTP_204_NO_CONTENT)
-def delete_sale(saleId):
-    sale = session.query(Sale).get(saleId)
-    if sale is None:
-        raise HTTPException(status_code=204, detail="No se encontro la venta")
-    session.delete(sale)
-    session.commit()
+        if not sale:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
+
+        session.delete(sale)
+        session.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to delete sale with id {sale_id}: {e}")
