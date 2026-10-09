@@ -23,10 +23,25 @@ class Sale(Base):
     date = Column(Date, nullable = False)
     time = Column(Time, nullable = False)
     productId = Column(Integer, ForeignKey('products.productId'), nullable = False)
-    quantity = Column(Integer, nullable = False)
-    total_price = Column(Float, nullable = False)
-
+    cart_id = Column(Integer, ForeignKey('carts.cartId'), nullable=False)
     product = relationship("Product", back_populates="sales")
+
+class Cart(Base):
+    __tablename__="carts"
+    cartId = Column(Integer, autoincrement=True, nullable=False, primary_key=True)
+    creation_date = Column(Date, nullable=False)
+    status = Column(String, nullable=False)
+
+    products = relationship("ProductCart", back_populates="cart")
+
+class ProductCart(Base):
+    __tablename__="productsCart"
+    productCartId = Column(Integer, autoincrement=True, nullable=False, primary_key= True)
+    cartId = Column(Integer, ForeignKey("carts.cartId"), nullable=False)
+    productId = Column(Integer, ForeignKey("products.productId"),nullable=False)
+    amount = Column(Integer, nullable=False)
+    cart = relationship("Cart",  back_populates="products")
+    product = relationship("Product")   # ← esto es lo que falta
 
 #Se crean las tablas si no existen en el .db
 Base.metadata.create_all(engine)

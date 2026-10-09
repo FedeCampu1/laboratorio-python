@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, status
-from database import session, Product, Sale
-from schemas import ProductCreate, SaleCreate, SaleResponse
+from database import session, Product, Sale, Cart, ProductCart
+from schemas import ProductCreate, SaleCreate, SaleResponse, CartCreate, CartResponse, ProductCartCreate, ProductCartResponse
 app = FastAPI()
 
 
@@ -90,15 +90,21 @@ def delete_product(product_id: int):
         if not product:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
+        productCart = session.query(ProductCart).filter(ProductCart.productId == product_id).first()
+
+        if productCart:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se puede eliminar un producto registrado en un carrito")
+
         session.delete(product)
         session.commit()
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to delete product with id {product_id}: {e}")
 
 
-# ABM Sales
+# ========== ABM Sales ===========
 
 @app.get("/sales", status_code=status.HTTP_200_OK, response_model=list[SaleResponse])
 def get_sales():
@@ -110,9 +116,9 @@ def get_sales():
 
 
 @app.get("/sales/{sale_id}", status_code=status.HTTP_200_OK, response_model=SaleResponse)
-def get_sale(sale_id: int):
+def get_saleId(saleId: int):
     try:
-        sale = session.query(Sale).get(sale_id)
+        sale = session.query(Sale).get(saleId)
 
         if not sale:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
@@ -121,9 +127,7 @@ def get_sale(sale_id: int):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to get sale with id {sale_id}: {e}")
-
-
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to get sale with id {saleId}: {e}")
 
 @app.post("/sale", status_code=status.HTTP_201_CREATED)
 def add_sale(data_sale: SaleCreate):
@@ -195,3 +199,73 @@ def delete_sale(sale_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred while trying to delete sale with id {sale_id}: {e}")
+
+#TODO: Me falta el POST para asignar una venta a un carrito
+
+
+#============ ABM CARRITO =========
+
+@app.get("/carts", status_code=status.HTTP_200_OK, response_model=list[CartResponse])
+def get_carts():
+    try: 
+        cart = session.query(Cart).all()
+        return cart
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error al obtener el carrito: {e}")
+
+@app.post("/carts", status_code=status.HTTP_201_CREATED)
+def add_cart(cartCreate:CartCreate):
+    try:
+        cart = Cart(
+            creation_date = cartCreate.creation_date,
+            status =cartCreate.status
+        )
+
+        session.add(cart)
+        session.commit()
+        session.refresh(cart)
+
+        response = {"cart": cart }
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ocurrio un error al crear un carrito: {e}")
+
+@app.post("/carts/{cartId}/products", status_code=status.HTTP_201_CREATED)
+def add_productCart(productCartCreate: ProductCartCreate):
+    try:
+        productCart = ProductCart(
+            cartId = productCartCreate.cartId,
+            productId = productCartCreate.productId,
+            amount = productCartCreate.amount
+        )
+
+        session.add(productCart)
+        session.commit()
+        session.refresh(productCart)
+        response = {"ProductCart": productCart}
+        return response
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ocurrio un error al crear un carrito de productos: {e}")
+   
+#TODO: hacer en el get de carritos, traer tambien a la tabla de cart product,
+# haciendo primero un get a productCart busncaod por cartId, las que encuentra las pone en get de cart
+
+@app.get("/carts/{cartId}", status_code=status.HTTP_200_OK, response_model=CartResponse)
+def get_cartId(cartId:int):
+    try:
+        cart = session.query(Cart).get(cartId)
+
+        if not cart:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carrito no encontrado")
+
+        return cart
+    except HTTPException:
+      raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ocurrio un error al obtener el carrito {cartId}: {e}")
+    

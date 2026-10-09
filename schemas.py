@@ -1,7 +1,7 @@
 from datetime import date,time
 from pydantic import BaseModel
 
-
+#PRODUCTO
 class ProductCreate(BaseModel):
     name:str
     price:int
@@ -15,7 +15,7 @@ class ProductResponse(BaseModel):
     price:int
 
 
-
+#VENTA
 class SaleCreate(BaseModel):
     date: date
     time: time
@@ -32,3 +32,34 @@ class SaleResponse(BaseModel):
     quantity: int
     productId:int
     total_price:float
+
+#CARRITO DE PRODUCTO
+class ProductCartResponse(BaseModel):
+    productCartId:int
+    product: ProductResponse
+    amount : int
+
+    class Config:
+        from_attributes = True
+
+class ProductCartCreate(BaseModel):
+    cartId: int
+    productId: int
+    amount : int
+
+#CARRITO
+class CartCreate(BaseModel):
+    creation_date: date
+    status: str
+
+class CartResponse(BaseModel):
+    cartId: int
+    creation_date: date
+    status: str
+    products:list[ProductCartResponse]
+
+    class Config:
+        from_attributes = True
+
+
+
