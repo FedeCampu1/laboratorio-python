@@ -12,9 +12,8 @@ class Product(Base):
     __tablename__ = 'products'
     productId = Column(Integer, autoincrement=True, nullable=False, primary_key=True)
     name = Column(String, nullable=False)
-    price = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)
 
-    sales = relationship("Sale", back_populates="product")
 
 #Tabla de ventas
 class Sale(Base):
@@ -22,9 +21,10 @@ class Sale(Base):
     saleId = Column(Integer, autoincrement = True, nullable = False, primary_key = True)
     date = Column(Date, nullable = False)
     time = Column(Time, nullable = False)
-    productId = Column(Integer, ForeignKey('products.productId'), nullable = False)
-    cart_id = Column(Integer, ForeignKey('carts.cartId'), nullable=False)
-    product = relationship("Product", back_populates="sales")
+    total_price = Column(Float, nullable=False)
+    cartId = Column(Integer, ForeignKey('carts.cartId'), nullable=False, unique=True)
+    
+    cart = relationship("Cart")
 
 class Cart(Base):
     __tablename__="carts"
@@ -32,16 +32,16 @@ class Cart(Base):
     creation_date = Column(Date, nullable=False)
     status = Column(String, nullable=False)
 
-    products = relationship("ProductCart", back_populates="cart")
+    productsCart = relationship("ProductCart", back_populates="cart")
 
 class ProductCart(Base):
     __tablename__="productsCart"
     productCartId = Column(Integer, autoincrement=True, nullable=False, primary_key= True)
     cartId = Column(Integer, ForeignKey("carts.cartId"), nullable=False)
     productId = Column(Integer, ForeignKey("products.productId"),nullable=False)
-    amount = Column(Integer, nullable=False)
-    cart = relationship("Cart",  back_populates="products")
-    product = relationship("Product")   # ← esto es lo que falta
+    quantity = Column(Integer, nullable=False)
+    cart = relationship("Cart",  back_populates="productsCart")
+    product = relationship("Product") 
 
 #Se crean las tablas si no existen en el .db
 Base.metadata.create_all(engine)

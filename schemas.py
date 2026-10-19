@@ -4,7 +4,7 @@ from pydantic import BaseModel
 #PRODUCTO
 class ProductCreate(BaseModel):
     name:str
-    price:int
+    price:float
 
     class Config:
         from_attributes = True
@@ -12,40 +12,42 @@ class ProductCreate(BaseModel):
 class ProductResponse(BaseModel):
     productId:int
     name:str
-    price:int
+    price:float
 
 
 #VENTA
 class SaleCreate(BaseModel):
     date: date
     time: time
-    quantity: int
-    productId:int
-
+    cartId:int
     class Config:
         from_attributes = True
 
 class SaleResponse(BaseModel):
-    saleId:int
+    saleId: int
     date: date
     time: time
-    quantity: int
-    productId:int
-    total_price:float
+    cart: CartResponse
+    total_price: float
+
+    class Config:
+        from_attributes = True
+
+class SaleCartAssign(BaseModel):
+    cartId:int
 
 #CARRITO DE PRODUCTO
 class ProductCartResponse(BaseModel):
     productCartId:int
     product: ProductResponse
-    amount : int
+    quantity : int
 
     class Config:
         from_attributes = True
 
 class ProductCartCreate(BaseModel):
-    cartId: int
     productId: int
-    amount : int
+    quantity : int
 
 #CARRITO
 class CartCreate(BaseModel):
@@ -56,7 +58,7 @@ class CartResponse(BaseModel):
     cartId: int
     creation_date: date
     status: str
-    products:list[ProductCartResponse]
+    productsCart:list[ProductCartResponse]
 
     class Config:
         from_attributes = True
